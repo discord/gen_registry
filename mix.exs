@@ -31,7 +31,7 @@ defmodule GenRegistry.Mixfile do
     [
       name: "GenRegistry",
       extras: ["README.md"],
-      main: "README",
+      main: "readme",
       source_url: "https://github.com/discordapp/gen_registry"
     ]
   end

@@ -233,7 +233,7 @@ defmodule GenRegistry.Test do
       assert 0 == GenRegistry.count(ExampleWorker)
 
       # Start a process
-      assert {:ok, pid} = GenRegistry.lookup_or_start(ExampleWorker, :test_id)
+      assert {:ok, _} = GenRegistry.lookup_or_start(ExampleWorker, :test_id)
 
       # Confirm that the count incremented for the new process
       assert 1 == GenRegistry.count(ExampleWorker)
@@ -428,7 +428,7 @@ defmodule GenRegistry.Test do
                workers: 0
              }
 
-      assert [{ExampleWorker, registry, :supervisor, _}] = Supervisor.which_children(pid)
+      assert [{ExampleWorker, _, :supervisor, _}] = Supervisor.which_children(pid)
     end
   end
 
@@ -444,7 +444,7 @@ defmodule GenRegistry.Test do
                workers: 0
              }
 
-      assert [{ExampleWorker, registry, :supervisor, _}] = Supervisor.which_children(pid)
+      assert [{ExampleWorker, _, :supervisor, _}] = Supervisor.which_children(pid)
     end
   end
 end

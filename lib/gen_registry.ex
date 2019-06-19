@@ -83,7 +83,7 @@ defmodule GenRegistry do
   If the id is not associated with a running process then it is spawned, the optional third
   argument will be passed to `start_link` of the `worker_module` to spawn a new process.
   """
-  @spec lookup_or_start(registry :: pid, id :: Types.id(), args :: [any], timeout :: integer) ::
+  @spec lookup_or_start(registry :: pid | module, id :: Types.id(), args :: [any], timeout :: integer) ::
           {:ok, pid} | {:error, any}
   def lookup_or_start(registry, id, args \\ [], timeout \\ 5_000) do
     @gen_module.call(registry, {:lookup_or_start, id, args}, timeout)

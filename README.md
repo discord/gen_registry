@@ -12,7 +12,7 @@ Add `GenRegistry` to your dependencies.
 ```elixir
 def deps do
   [
-    {:gen_registry, "~> 1.0.0"}
+    {:gen_registry, "~> 1.0"}
   ]
 end
 ```

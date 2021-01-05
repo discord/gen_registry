@@ -28,12 +28,15 @@ jobs:
     - uses: actions/checkout@v2
     - name: Set up Elixir
       uses: actions/setup-elixir@v1
+      with:
+        elixir-version: ${{ matrix.elixir-version }}
+        otp-version: ${{ matrix.otp-version }}
     - name: Restore dependencies cache
       uses: actions/cache@v2
       with:
         path: deps
-        key: ${{ runner.os }}-${{ runner.elixir-version }}-${{ runner.otp-version}}-mix-${{ hashFiles('**/mix.lock') }}
-        restore-keys: ${{ runner.os }}-${{ runner.elixir-version}}-${{runner.otp-version}}-mix-
+        key: ${{ runner.os }}-${{ matrix.elixir-version }}-${{ matrix.otp-version}}-mix-${{ hashFiles('**/mix.lock') }}
+        restore-keys: ${{ runner.os }}-${{ matrix.elixir-version}}-${{ matrix.otp-version }}-mix-
     - name: Install dependencies
       run: mix deps.get
     - name: Run tests

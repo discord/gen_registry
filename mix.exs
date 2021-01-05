@@ -4,7 +4,7 @@ defmodule GenRegistry.Mixfile do
   def project do
     [
       app: :gen_registry,
-      version: "1.0.1",
+      version: "1.0.2",
       elixir: "~> 1.2",
       build_embedded: Mix.env() == :prod,
       start_permanent: Mix.env() == :prod,
@@ -23,7 +23,7 @@ defmodule GenRegistry.Mixfile do
   defp deps do
     [
       {:ex_doc, "~> 0.19", only: [:dev], runtime: false},
-      {:dialyxir, "~> 1.0.0-rc.3", only: [:dev], runtime: false}
+      {:dialyxir, "~> 1.0", only: [:dev], runtime: false}
     ]
   end
 

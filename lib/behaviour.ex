@@ -9,10 +9,10 @@ defmodule GenRegistry.Behaviour do
   alias :ets, as: ETS
   alias GenRegistry.Types
 
-  @callback lookup(ETS.tid(), Types.id()) :: {:ok, pid} | {:error, :not_found}
+  @callback lookup(ETS.tab(), Types.id()) :: {:ok, pid} | {:error, :not_found}
   @callback lookup_or_start(pid, Types.id(), args :: [term], timeout :: integer) ::
               {:ok, pid} | {:error, term}
   @callback stop(pid, Types.id()) :: :ok | {:error, :not_found}
-  @callback count(ETS.tid()) :: integer
-  @callback reduce(ETS.tid(), term, ({Types.id(), pid}, term -> term)) :: term
+  @callback count(ETS.tab()) :: integer
+  @callback reduce(ETS.tab(), term, ({Types.id(), pid}, term -> term)) :: term
 end

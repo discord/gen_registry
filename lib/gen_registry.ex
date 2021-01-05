@@ -22,7 +22,7 @@ defmodule GenRegistry do
   @type t :: %__MODULE__{
           worker_module: module,
           worker_type: :supervisor | :worker,
-          workers: ETS.tid()
+          workers: ETS.tab()
         }
 
   @gen_module Application.get_env(:gen_registry, :gen_module, GenServer)
@@ -69,7 +69,7 @@ defmodule GenRegistry do
 
   This is a fast path to the ETS table.
   """
-  @spec lookup(table :: ETS.tid(), id :: Types.id()) :: {:ok, pid} | {:error, :not_found}
+  @spec lookup(table :: ETS.tab(), id :: Types.id()) :: {:ok, pid} | {:error, :not_found}
   def lookup(table, id) do
     case ETS.lookup(table, id) do
       [{^id, pid}] -> {:ok, pid}
@@ -104,7 +104,7 @@ defmodule GenRegistry do
   @doc """
   Return the number of running processes in this registry.
   """
-  @spec count(table :: ETS.tid()) :: non_neg_integer()
+  @spec count(table :: ETS.tab()) :: non_neg_integer()
   def count(table) do
     ETS.info(table, :size)
   end
@@ -117,7 +117,7 @@ defmodule GenRegistry do
 
   There is no ordering guarantee when reducing.
   """
-  @spec reduce(table :: ETS.tid(), acc :: any, ({Types.id(), pid()}, any() -> any())) :: any
+  @spec reduce(table :: ETS.tab(), acc :: any, ({Types.id(), pid()}, any() -> any())) :: any
   def reduce(table, acc, func) do
     ETS.foldr(func, acc, table)
   end

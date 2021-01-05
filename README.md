@@ -1,8 +1,9 @@
 # GenRegistry
 
-![Elixir CI](https://github.com/discord/gen_registry/workflows/Elixir%20CI/badge.svg)
+[![Elixir CI](https://github.com/discord/gen_registry/workflows/Elixir%20CI/badge.svg)](https://github.com/discord/gen_registry/actions)
 [![Hex.pm Version](http://img.shields.io/hexpm/v/gen_registry.svg?style=flat)](https://hex.pm/packages/gen_registry)
 [![Hex.pm License](http://img.shields.io/hexpm/l/gen_registry.svg?style=flat)](https://hex.pm/packages/gen_registry)
+[![HexDocs](https://img.shields.io/badge/HexDocs-Yes-blue)](https://hexdocs.pm/gen_registry)
 
 
 `GenRegistry` provides a simple interface for managing a local registry of processes.

@@ -85,7 +85,19 @@ defmodule GenRegistry do
   """
   @spec lookup_or_start(registry :: GenServer.server(), id :: Types.id(), args :: [any], timeout :: integer) ::
           {:ok, pid} | {:error, any}
-  def lookup_or_start(registry, id, args \\ [], timeout \\ 5_000) do
+  def lookup_or_start(registry, id, args \\ [], timeout \\ 5_000)
+
+  def lookup_or_start(registry, id, args, timeout) when is_atom(registry) do
+    case lookup(registry, id) do
+      {:ok, pid} ->
+        {:ok, pid}
+
+      {:error, :not_found} ->
+        @gen_module.call(registry, {:lookup_or_start, id, args}, timeout)
+    end
+  end
+
+  def lookup_or_start(registry, id, args, timeout) do
     @gen_module.call(registry, {:lookup_or_start, id, args}, timeout)
   end
 

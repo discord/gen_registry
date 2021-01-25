@@ -41,4 +41,72 @@ defmodule ExampleSupervisor do
   end
 end
 
+defmodule Spy do
+  use GenServer
+
+  def start_link(original) do
+    GenServer.start_link(__MODULE__, original)
+  end
+
+  def replace(name) do
+    case Process.whereis(name) do
+      nil ->
+        {:error, :not_found}
+
+      pid ->
+        true = Process.unregister(name)
+        {:ok, spy} = start_link(pid)
+        Process.register(spy, name)
+
+        {:ok, spy}
+    end
+  end
+
+  def calls(pid) do
+    GenServer.call(pid, {__MODULE__, :calls})
+  end
+
+  def casts(pid) do
+    GenServer.call(pid, {__MODULE__, :casts})
+  end
+
+  def messages(pid) do
+    GenServer.call(pid, {__MODULE__, :messages})
+  end
+
+  def init(original) do
+    state =
+      %{
+        original: original,
+        calls: [],
+        casts: [],
+        messages: []
+      }
+
+    {:ok, state}
+  end
+
+  def handle_call({__MODULE__, key}, _from, state) do
+    {:reply, Map.fetch(state, key), state}
+  end
+
+  def handle_call(call, _from, state) do
+    response = GenServer.call(state.original, call)
+    state = Map.update!(state, :calls, &[{call, response} | &1])
+    {:reply, response, state}
+  end
+
+  def handle_cast(cast, state) do
+    GenServer.cast(state.original, cast)
+    state = Map.update!(state, :casts, &[cast | &1])
+    {:noreply, state}
+  end
+
+  def handle_info(info, state) do
+    send(state.original, info)
+    state = Map.update!(state, :messages, &[info | &1])
+    {:noreply, state}
+  end
+end
+
 ExUnit.start()

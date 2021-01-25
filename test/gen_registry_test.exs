@@ -11,7 +11,7 @@ defmodule GenRegistry.Test do
   """
   @spec start_registry(ctx :: Map.t()) :: :ok
   def start_registry(_) do
-    {:ok, _} = GenRegistry.start_link(ExampleWorker, name: ExampleWorker)
+    {:ok, _} = start_supervised({GenRegistry, worker_module: ExampleWorker})
     :ok
   end
 
@@ -387,7 +387,7 @@ defmodule GenRegistry.Test do
       assert Enum.all?(pids, &Process.alive?/1)
 
       # Stop the registry
-      assert true == Process.exit(registry, :normal)
+      assert :ok == stop_supervised(ExampleWorker)
 
       # Wait for the registry to die
       assert wait_until(fn ->

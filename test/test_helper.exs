@@ -24,23 +24,6 @@ defmodule ExampleWorker do
   end
 end
 
-defmodule ExampleSupervisor do
-  use Supervisor
-
-  def start_link(module \\ ExampleWorker, opts \\ []) do
-    Supervisor.start_link(__MODULE__, {module, opts})
-  end
-
-  def init({module, opts}) do
-    supervise(
-      [
-        GenRegistry.Spec.child_spec(module, opts)
-      ],
-      strategy: :one_for_one
-    )
-  end
-end
-
 defmodule Spy do
   use GenServer
 

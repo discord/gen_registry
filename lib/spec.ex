@@ -14,7 +14,8 @@ defmodule GenRegistry.Spec do
   """
   @spec child_spec(worker_module :: module, opts :: Keyword.t()) :: Supervisor.Spec.spec()
   def child_spec(worker_module, opts \\ []) do
-    opts = Keyword.put(opts, :name, worker_module)
-    supervisor(GenRegistry, [worker_module, opts], id: worker_module)
+    opts = Keyword.put_new(opts, :name, worker_module)
+
+    supervisor(GenRegistry, [worker_module, opts], id: opts[:name])
   end
 end

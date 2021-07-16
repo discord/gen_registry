@@ -36,19 +36,15 @@ defmodule GenRegistry do
   """
   @spec child_spec(opts :: Keyword.t()) :: Supervisor.child_spec()
   def child_spec(opts) do
-    {worker_module, opts} =
-      case Keyword.pop(opts, :worker_module) do
-        {nil, _} ->
-          raise KeyError, key: :worker_module, term: opts
+    worker_module = Keyword.fetch!(opts, :worker_module)
 
-        value ->
-          value
-      end
-
-    opts = Keyword.put(opts, :name, worker_module)
+    opts =
+      opts
+      |> Keyword.delete(:worker_module)
+      |> Keyword.put_new(:name, worker_module)
 
     %{
-      id: worker_module,
+      id: opts[:name],
       start: {__MODULE__, :start_link, [worker_module, opts]},
       type: :supervisor
     }
@@ -61,7 +57,7 @@ defmodule GenRegistry do
   """
   @spec start_link(module, Keyword.t()) :: {:ok, pid} | {:error, any}
   def start_link(module, opts \\ []) do
-    GenServer.start_link(__MODULE__, module, opts)
+    GenServer.start_link(__MODULE__, {module, opts[:name]}, opts)
   end
 
   @doc """
@@ -136,7 +132,7 @@ defmodule GenRegistry do
 
   ## Server Callbacks
 
-  def init(worker_module) do
+  def init({worker_module, name}) do
     Process.flag(:trap_exit, true)
 
     worker_type =
@@ -147,7 +143,7 @@ defmodule GenRegistry do
 
     state = %__MODULE__{
       workers:
-        ETS.new(worker_module, [
+        ETS.new(name, [
           :public,
           :set,
           :named_table,

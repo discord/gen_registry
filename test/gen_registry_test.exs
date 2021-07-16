@@ -467,52 +467,24 @@ defmodule GenRegistry.Test do
     end
   end
 
-  describe "supervising a registry via module child spec" do
-    test "invalid spec, no arguments" do
-      assert_raise KeyError, "key :worker_module not found in: []", fn ->
-        Supervisor.start_link([GenRegistry], strategy: :one_for_one)
-      end
-    end
+  describe "custom name" do
+    test "multiple GenRegistries can be started for the same module with custom names" do
+      {:ok, _} = start_supervised({GenRegistry, worker_module: ExampleWorker, name: ExampleWorker.A})
+      {:ok, _} = start_supervised({GenRegistry, worker_module: ExampleWorker, name: ExampleWorker.B})
 
-    test "invalid spec, no :worker_module argument" do
-      assert_raise KeyError, "key :worker_module not found in: [test_key: :test_value]", fn ->
-        Supervisor.start_link([{GenRegistry, test_key: :test_value}], strategy: :one_for_one)
-      end
-    end
+      assert {:error, :not_found} = GenRegistry.lookup(ExampleWorker.A, :test_id)
+      assert {:ok, worker_a_pid} = GenRegistry.lookup_or_start(ExampleWorker.A, :test_id, [:test_value_a])
 
-    test "valid module child spec" do
-      assert {:ok, pid} =
-               Supervisor.start_link(
-                 [
-                   {GenRegistry, worker_module: ExampleWorker}
-                 ],
-                 strategy: :one_for_one
-               )
+      assert {:error, :not_found} = GenRegistry.lookup(ExampleWorker.B, :test_id)
+      assert {:ok, worker_b_pid} = GenRegistry.lookup_or_start(ExampleWorker.B, :test_id, [:test_value_b])
 
-      assert Supervisor.count_children(pid) == %{
-               active: 1,
-               specs: 1,
-               supervisors: 1,
-               workers: 0
-             }
+      assert worker_a_pid != worker_b_pid
 
-      assert [{ExampleWorker, _, :supervisor, _}] = Supervisor.which_children(pid)
-    end
-  end
+      assert ExampleWorker.get(worker_a_pid) == :test_value_a
+      assert ExampleWorker.get(worker_b_pid) == :test_value_b
 
-  describe "supervising a registry via pre-1.5 Supervisor.Spec" do
-    test "functions as expected" do
-      # Note: See ExampleSupervisor in test_helpers.exs to see how this works
-      assert {:ok, pid} = ExampleSupervisor.start_link()
-
-      assert Supervisor.count_children(pid) == %{
-               active: 1,
-               specs: 1,
-               supervisors: 1,
-               workers: 0
-             }
-
-      assert [{ExampleWorker, _, :supervisor, _}] = Supervisor.which_children(pid)
+      stop_supervised(ExampleWorker.A)
+      stop_supervised(ExampleWorker.B)
     end
   end
 end

@@ -11,8 +11,8 @@ defmodule GenRegistry.Test do
   """
   @spec start_registry(ctx :: Map.t()) :: :ok
   def start_registry(_) do
-    {:ok, _} = start_supervised({GenRegistry, worker_module: ExampleWorker})
-    :ok
+    {:ok, registry} = start_supervised({GenRegistry, worker_module: ExampleWorker})
+    {:ok, registry: registry}
   end
 
   @doc """
@@ -220,6 +220,37 @@ defmodule GenRegistry.Test do
 
       # Assert that the response is the one returned from the call
       assert {:ok, pid} == response
+    end
+
+    test "when given a pid will perform a server-side lookup and start if id is running", ctx do
+      # Start a process so something will be available client-side
+      assert {:ok, pid} = GenRegistry.lookup_or_start(ExampleWorker, :test_id, [:test])
+
+      # Replace the GenRegistry with a Spy
+      assert {:ok, spy} = Spy.replace(ctx.registry)
+
+      # Assert that the spy has seen 0 calls
+      assert {:ok, []} == Spy.calls(spy)
+
+      # Assert that the GenRegistry can lookup the `:test_id` process
+      assert {:ok, pid} == GenRegistry.lookup_or_start(spy, :test_id, [:test])
+
+      # Assert again that the spy has seen 0 calls
+      assert {:ok, [{call, response}]} = Spy.calls(spy)
+    end
+
+    test "when given a pid will perform server-side lookup and start if id is not running", ctx do
+      # Replace the GenRegistry with a Spy
+      assert {:ok, spy} = Spy.replace(ctx.registry)
+
+      # Assert that the spy has seen 0 calls
+      assert {:ok, []} == Spy.calls(spy)
+
+      # Assert that the GenRegistry can lookup the `:test_id` process
+      assert {:ok, pid} = GenRegistry.lookup_or_start(spy, :test_id, [:test])
+
+      # Assert again that the spy has seen 0 calls
+      assert {:ok, [{call, response}]} = Spy.calls(spy)
     end
   end
 

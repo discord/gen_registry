@@ -48,6 +48,10 @@ defmodule Spy do
     GenServer.start_link(__MODULE__, original)
   end
 
+  def replace(pid) when is_pid(pid) do
+    start_link(pid)
+  end
+
   def replace(name) do
     case Process.whereis(name) do
       nil ->

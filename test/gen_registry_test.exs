@@ -11,8 +11,8 @@ defmodule GenRegistry.Test do
   """
   @spec start_registry(ctx :: Map.t()) :: :ok
   def start_registry(_) do
-    {:ok, _} = start_supervised({GenRegistry, worker_module: ExampleWorker})
-    :ok
+    {:ok, registry} = start_supervised({GenRegistry, worker_module: ExampleWorker})
+    {:ok, registry: registry}
   end
 
   @doc """
@@ -183,6 +183,74 @@ defmodule GenRegistry.Test do
 
       # Confirm that the registry has 1 process
       assert 1 == GenRegistry.count(ExampleWorker)
+    end
+
+    test "when given a local name will perform a client-side lookup" do
+      # Start a process so something will be available client-side
+      assert {:ok, pid} = GenRegistry.lookup_or_start(ExampleWorker, :test_id, [:test])
+
+      # Replace the GenRegistry with a Spy
+      assert {:ok, spy} = Spy.replace(ExampleWorker)
+
+      # Assert that the spy has seen 0 calls
+      assert {:ok, []} == Spy.calls(spy)
+
+      # Assert that the GenRegistry can lookup the `:test_id` process
+      assert {:ok, pid} == GenRegistry.lookup_or_start(ExampleWorker, :test_id, [:test])
+
+      # Assert again that the spy has seen 0 calls
+      assert {:ok, []} == Spy.calls(spy)
+    end
+
+    test "when given a local name will perform a server-side lookup and start if id not found" do
+      # Replace the GenRegistry with a Spy
+      assert {:ok, spy} = Spy.replace(ExampleWorker)
+
+      # Assert that the spy has seen 0 calls
+      assert {:ok, []} == Spy.calls(spy)
+
+      # Assert that the GenRegistry can still perform a lookup_or_start
+      assert {:ok, pid} = GenRegistry.lookup_or_start(ExampleWorker, :test_id, [:test])
+
+      # Assert that the spy saw the call for lookup_or_start
+      assert {:ok, [{call, response}]} = Spy.calls(spy)
+
+      # Assert that the call is what we would expect for a server-side lookup_or_start
+      assert {:lookup_or_start, :test_id, [:test]} == call
+
+      # Assert that the response is the one returned from the call
+      assert {:ok, pid} == response
+    end
+
+    test "when given a pid will perform a server-side lookup and start if id is running", ctx do
+      # Start a process so something will be available client-side
+      assert {:ok, pid} = GenRegistry.lookup_or_start(ExampleWorker, :test_id, [:test])
+
+      # Replace the GenRegistry with a Spy
+      assert {:ok, spy} = Spy.replace(ctx.registry)
+
+      # Assert that the spy has seen 0 calls
+      assert {:ok, []} == Spy.calls(spy)
+
+      # Assert that the GenRegistry can lookup the `:test_id` process
+      assert {:ok, pid} == GenRegistry.lookup_or_start(spy, :test_id, [:test])
+
+      # Assert again that the spy has seen 0 calls
+      assert {:ok, [{call, response}]} = Spy.calls(spy)
+    end
+
+    test "when given a pid will perform server-side lookup and start if id is not running", ctx do
+      # Replace the GenRegistry with a Spy
+      assert {:ok, spy} = Spy.replace(ctx.registry)
+
+      # Assert that the spy has seen 0 calls
+      assert {:ok, []} == Spy.calls(spy)
+
+      # Assert that the GenRegistry can lookup the `:test_id` process
+      assert {:ok, pid} = GenRegistry.lookup_or_start(spy, :test_id, [:test])
+
+      # Assert again that the spy has seen 0 calls
+      assert {:ok, [{call, response}]} = Spy.calls(spy)
     end
   end
 
@@ -399,52 +467,24 @@ defmodule GenRegistry.Test do
     end
   end
 
-  describe "supervising a registry via module child spec" do
-    test "invalid spec, no arguments" do
-      assert_raise KeyError, "key :worker_module not found in: []", fn ->
-        Supervisor.start_link([GenRegistry], strategy: :one_for_one)
-      end
-    end
+  describe "custom name" do
+    test "multiple GenRegistries can be started for the same module with custom names" do
+      {:ok, _} = start_supervised({GenRegistry, worker_module: ExampleWorker, name: ExampleWorker.A})
+      {:ok, _} = start_supervised({GenRegistry, worker_module: ExampleWorker, name: ExampleWorker.B})
 
-    test "invalid spec, no :worker_module argument" do
-      assert_raise KeyError, "key :worker_module not found in: [test_key: :test_value]", fn ->
-        Supervisor.start_link([{GenRegistry, test_key: :test_value}], strategy: :one_for_one)
-      end
-    end
+      assert {:error, :not_found} = GenRegistry.lookup(ExampleWorker.A, :test_id)
+      assert {:ok, worker_a_pid} = GenRegistry.lookup_or_start(ExampleWorker.A, :test_id, [:test_value_a])
 
-    test "valid module child spec" do
-      assert {:ok, pid} =
-               Supervisor.start_link(
-                 [
-                   {GenRegistry, worker_module: ExampleWorker}
-                 ],
-                 strategy: :one_for_one
-               )
+      assert {:error, :not_found} = GenRegistry.lookup(ExampleWorker.B, :test_id)
+      assert {:ok, worker_b_pid} = GenRegistry.lookup_or_start(ExampleWorker.B, :test_id, [:test_value_b])
 
-      assert Supervisor.count_children(pid) == %{
-               active: 1,
-               specs: 1,
-               supervisors: 1,
-               workers: 0
-             }
+      assert worker_a_pid != worker_b_pid
 
-      assert [{ExampleWorker, _, :supervisor, _}] = Supervisor.which_children(pid)
-    end
-  end
+      assert ExampleWorker.get(worker_a_pid) == :test_value_a
+      assert ExampleWorker.get(worker_b_pid) == :test_value_b
 
-  describe "supervising a registry via pre-1.5 Supervisor.Spec" do
-    test "functions as expected" do
-      # Note: See ExampleSupervisor in test_helpers.exs to see how this works
-      assert {:ok, pid} = ExampleSupervisor.start_link()
-
-      assert Supervisor.count_children(pid) == %{
-               active: 1,
-               specs: 1,
-               supervisors: 1,
-               workers: 0
-             }
-
-      assert [{ExampleWorker, _, :supervisor, _}] = Supervisor.which_children(pid)
+      stop_supervised(ExampleWorker.A)
+      stop_supervised(ExampleWorker.B)
     end
   end
 end

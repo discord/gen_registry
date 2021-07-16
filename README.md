@@ -25,7 +25,7 @@ end
 
 ### Example: Phone Number Blacklist
 
-In our example we have some arbitrary spam deflection system where each phone number is allowed to define it's own custom rules.  To make sure our application stays simple we encapsulate the blacklisting logic in a GenServer which handles caching, loading, saving blacklist rules.
+In our example we have some arbitrary spam deflection system where each phone number is allowed to define its own custom rules.  To make sure our application stays simple we encapsulate the blacklisting logic in a GenServer which handles caching, loading, saving blacklist rules.
 
 With `GenRegistry` we don't need to worry about carefully keeping track of Blacklist pids for each phone number.  The phone number (normalized) makes a natural id for the `GenRegistry`. `GenRegistry` will also manage the lifecycle and supervision of these processes, allowing us to write simplified code like this.
 
@@ -206,4 +206,3 @@ GenRegistry ships with a full suite of tests, these are normal ExUnit tests.
 ```console
 $ mix tests
 ```
-

@@ -87,7 +87,7 @@ The second argument is a `Keyword` of options that will be passed as the options
 
 `GenRegistry` uses some conventions to make it easy to work with.  `GenRegistry` will use `GenServer.start_link/3`'s `:name` facility to give the `GenRegistry` the same name as the `worker_module`.  `GenRegistry` will also name the `ETS` table after the `worker_module`.
 
-These two conventions together means almost every function in the `GenRegistry` API can be called with the `worker_module` as the first argument and work as expected.
+These two conventions together mean almost every function in the `GenRegistry` API can be called with the `worker_module` as the first argument and work as expected.
 
 Building off of the above supervision section, let's assume that we've start a `GenRegistry` to manage the `ExampleWorker` module.
 

@@ -118,6 +118,28 @@ defmodule GenRegistry do
   end
 
   @doc """
+  Return a sample entry from the registry.
+
+  If the registry is empty returns `nil`.
+  """
+  @spec sample(table :: ETS.tab()) :: {Types.id(), pid()} | nil
+  def sample(table) do
+    case ETS.first(table) do
+      :"$end_of_table" ->
+        nil
+
+      key ->
+        case ETS.lookup(table, key) do
+          [entry] ->
+            entry
+
+          _ ->
+            sample(table)
+        end
+    end
+  end
+
+  @doc """
   Loop over all the processes and return result.
 
   The function will be called with two arguments, a two-tuple of `{id, pid}` and then accumulator,
@@ -128,6 +150,16 @@ defmodule GenRegistry do
   @spec reduce(table :: ETS.tab(), acc :: any, ({Types.id(), pid()}, any() -> any())) :: any
   def reduce(table, acc, func) do
     ETS.foldr(func, acc, table)
+  end
+
+  @doc """
+  Returns all the entries of the GenRegistry as a list.
+
+  There is no ordering guarantee for the list.
+  """
+  @spec to_list(table :: ETS.tab()) :: [{Types.id(), pid()}]
+  def to_list(table) do
+    ETS.tab2list(table)
   end
 
   ## Server Callbacks

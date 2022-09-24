@@ -1,5 +1,6 @@
 defmodule GenRegistry.Test do
   use ExUnit.Case
+  use Patch
 
   @doc """
   Common setup function that starts a GenRegistry
@@ -186,71 +187,50 @@ defmodule GenRegistry.Test do
     end
 
     test "when given a local name will perform a client-side lookup" do
+
       # Start a process so something will be available client-side
       assert {:ok, pid} = GenRegistry.lookup_or_start(ExampleWorker, :test_id, [:test])
 
-      # Replace the GenRegistry with a Spy
-      assert {:ok, spy} = Spy.replace(ExampleWorker)
-
-      # Assert that the spy has seen 0 calls
-      assert {:ok, []} == Spy.calls(spy)
+      listen(:listener, ExampleWorker)
 
       # Assert that the GenRegistry can lookup the `:test_id` process
       assert {:ok, pid} == GenRegistry.lookup_or_start(ExampleWorker, :test_id, [:test])
 
-      # Assert again that the spy has seen 0 calls
-      assert {:ok, []} == Spy.calls(spy)
+      # Lookup should not have needed to call into the GenServer
+      refute_receive {:listener, _}
     end
 
     test "when given a local name will perform a server-side lookup and start if id not found" do
-      # Replace the GenRegistry with a Spy
-      assert {:ok, spy} = Spy.replace(ExampleWorker)
+      listen(:listener, ExampleWorker)
 
-      # Assert that the spy has seen 0 calls
-      assert {:ok, []} == Spy.calls(spy)
-
-      # Assert that the GenRegistry can still perform a lookup_or_start
       assert {:ok, pid} = GenRegistry.lookup_or_start(ExampleWorker, :test_id, [:test])
 
-      # Assert that the spy saw the call for lookup_or_start
-      assert {:ok, [{call, response}]} = Spy.calls(spy)
-
-      # Assert that the call is what we would expect for a server-side lookup_or_start
-      assert {:lookup_or_start, :test_id, [:test]} == call
-
-      # Assert that the response is the one returned from the call
-      assert {:ok, pid} == response
+      # Assert that the lookup_or_start call caused a new pid to spawn via GenServer.call
+      assert_receive {:listener, {GenServer, :call, {:lookup_or_start, :test_id, [:test]}, from}}
+      assert_receive {:listener, {GenServer, :reply, {:ok, ^pid}, ^from}}
     end
 
     test "when given a pid will perform a server-side lookup and start if id is running", ctx do
       # Start a process so something will be available client-side
       assert {:ok, pid} = GenRegistry.lookup_or_start(ExampleWorker, :test_id, [:test])
 
-      # Replace the GenRegistry with a Spy
-      assert {:ok, spy} = Spy.replace(ctx.registry)
-
-      # Assert that the spy has seen 0 calls
-      assert {:ok, []} == Spy.calls(spy)
+      {:ok, listener} = listen(:listener, ctx.registry)
 
       # Assert that the GenRegistry can lookup the `:test_id` process
-      assert {:ok, pid} == GenRegistry.lookup_or_start(spy, :test_id, [:test])
+      assert {:ok, pid} == GenRegistry.lookup_or_start(listener, :test_id, [:test])
 
-      # Assert again that the spy has seen 0 calls
-      assert {:ok, [{call, response}]} = Spy.calls(spy)
+      assert_receive {:listener, {GenServer, :call, {:lookup_or_start, :test_id, [:test]}, from}}
+      assert_receive {:listener, {GenServer, :reply, {:ok, ^pid}, ^from}}
     end
 
     test "when given a pid will perform server-side lookup and start if id is not running", ctx do
-      # Replace the GenRegistry with a Spy
-      assert {:ok, spy} = Spy.replace(ctx.registry)
+      {:ok, listener} = listen(:listener, ctx.registry)
 
-      # Assert that the spy has seen 0 calls
-      assert {:ok, []} == Spy.calls(spy)
+      # Assert that the GenRegistry can lookup_or_start the `:test_id` process
+      assert {:ok, pid} = GenRegistry.lookup_or_start(listener, :test_id, [:test])
 
-      # Assert that the GenRegistry can lookup the `:test_id` process
-      assert {:ok, pid} = GenRegistry.lookup_or_start(spy, :test_id, [:test])
-
-      # Assert again that the spy has seen 0 calls
-      assert {:ok, [{call, response}]} = Spy.calls(spy)
+      assert_receive {:listener, {GenServer, :call, {:lookup_or_start, :test_id, [:test]}, from}}
+      assert_receive {:listener, {GenServer, :reply, {:ok, ^pid}, ^from}}
     end
   end
 
@@ -369,15 +349,61 @@ defmodule GenRegistry.Test do
     test "populated registry, populated accumulator" do
       acc = [{1, nil}, {2, nil}, {3, nil}]
 
+      spawned =
+        for i <- 4..5 do
+          assert {:ok, pid} = GenRegistry.lookup_or_start(ExampleWorker, i)
+          {i, pid}
+        end
+
+      expected = acc ++ spawned
+
+      actual =
+        ExampleWorker
+        |> GenRegistry.reduce(acc, &collect/2)
+        |> Enum.sort()
+
+      assert expected == actual
+    end
+  end
+
+  describe "sample/1" do
+    setup [:start_registry]
+
+    test "empty registry returns nil" do
+      refute GenRegistry.sample(ExampleWorker)
+    end
+
+    test "returns one of the entries in the registry" do
+      candidates =
+        for i <- 1..5 do
+          assert {:ok, pid} = GenRegistry.lookup_or_start(ExampleWorker, i)
+          {i, pid}
+        end
+
+      assert sample = GenRegistry.sample(ExampleWorker)
+
+      assert sample in candidates
+    end
+  end
+
+
+  describe "to_list/1" do
+    setup [:start_registry]
+
+    test "empty registry returns empty list" do
+      assert [] == GenRegistry.to_list(ExampleWorker)
+    end
+
+    test "populated registry returns list of {id, pid} tuples" do
       expected =
-        for i <- 4..5, into: acc do
+        for i <- 1..5 do
           assert {:ok, pid} = GenRegistry.lookup_or_start(ExampleWorker, i)
           {i, pid}
         end
 
       actual =
         ExampleWorker
-        |> GenRegistry.reduce(acc, &collect/2)
+        |> GenRegistry.to_list()
         |> Enum.sort()
 
       assert expected == actual

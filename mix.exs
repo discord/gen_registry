@@ -6,7 +6,6 @@ defmodule GenRegistry.Mixfile do
       app: :gen_registry,
       version: "1.1.0",
       elixir: "~> 1.2",
-      elixirc_paths: elixirc_paths(Mix.env()),
       build_embedded: Mix.env() == :prod,
       start_permanent: Mix.env() == :prod,
       deps: deps(),
@@ -25,7 +24,6 @@ defmodule GenRegistry.Mixfile do
     [
       {:ex_doc, "~> 0.19", only: [:dev], runtime: false},
       {:dialyxir, "~> 1.0", only: [:dev], runtime: false},
-      {:patch, "~> 0.12.0", only: [:test]}
     ]
   end
 
@@ -37,10 +35,6 @@ defmodule GenRegistry.Mixfile do
       source_url: "https://github.com/discordapp/gen_registry"
     ]
   end
-
-  # Specifies which elixir paths to compile per environment.
-  defp elixirc_paths(:test), do: ["lib", "test/support"]
-  defp elixirc_paths(_), do: ["lib"]
 
   defp package do
     [

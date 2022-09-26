@@ -235,8 +235,14 @@ defmodule GenRegistry.Test do
       # Assert that the GenRegistry can lookup the `:test_id` process
       assert {:ok, pid} == GenRegistry.lookup_or_start(spy, :test_id, [:test])
 
-      # Assert again that the spy has seen 0 calls
+      # Assert that the spy saw the call for lookup_or_start
       assert {:ok, [{call, response}]} = Spy.calls(spy)
+
+      # Assert that the call is what we would expect for a server-side lookup_or_start
+      assert {:lookup_or_start, :test_id, [:test]} == call
+
+      # Assert that the response is the one returned from the call
+      assert {:ok, pid} == response
     end
 
     test "when given a pid will perform server-side lookup and start if id is not running", ctx do
@@ -249,8 +255,14 @@ defmodule GenRegistry.Test do
       # Assert that the GenRegistry can lookup the `:test_id` process
       assert {:ok, pid} = GenRegistry.lookup_or_start(spy, :test_id, [:test])
 
-      # Assert again that the spy has seen 0 calls
+      # Assert that the spy saw the call for lookup_or_start
       assert {:ok, [{call, response}]} = Spy.calls(spy)
+
+      # Assert that the call is what we would expect for a server-side lookup_or_start
+      assert {:lookup_or_start, :test_id, [:test]} == call
+
+      # Assert that the response is the one returned from the call
+      assert {:ok, pid} == response
     end
   end
 
@@ -369,15 +381,61 @@ defmodule GenRegistry.Test do
     test "populated registry, populated accumulator" do
       acc = [{1, nil}, {2, nil}, {3, nil}]
 
+      spawned =
+        for i <- 4..5 do
+          assert {:ok, pid} = GenRegistry.lookup_or_start(ExampleWorker, i)
+          {i, pid}
+        end
+
+      expected = acc ++ spawned
+
+      actual =
+        ExampleWorker
+        |> GenRegistry.reduce(acc, &collect/2)
+        |> Enum.sort()
+
+      assert expected == actual
+    end
+  end
+
+  describe "sample/1" do
+    setup [:start_registry]
+
+    test "empty registry returns nil" do
+      refute GenRegistry.sample(ExampleWorker)
+    end
+
+    test "returns one of the entries in the registry" do
+      candidates =
+        for i <- 1..5 do
+          assert {:ok, pid} = GenRegistry.lookup_or_start(ExampleWorker, i)
+          {i, pid}
+        end
+
+      assert sample = GenRegistry.sample(ExampleWorker)
+
+      assert sample in candidates
+    end
+  end
+
+
+  describe "to_list/1" do
+    setup [:start_registry]
+
+    test "empty registry returns empty list" do
+      assert [] == GenRegistry.to_list(ExampleWorker)
+    end
+
+    test "populated registry returns list of {id, pid} tuples" do
       expected =
-        for i <- 4..5, into: acc do
+        for i <- 1..5 do
           assert {:ok, pid} = GenRegistry.lookup_or_start(ExampleWorker, i)
           {i, pid}
         end
 
       actual =
         ExampleWorker
-        |> GenRegistry.reduce(acc, &collect/2)
+        |> GenRegistry.to_list()
         |> Enum.sort()
 
       assert expected == actual

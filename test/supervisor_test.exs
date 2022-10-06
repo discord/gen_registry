@@ -10,11 +10,11 @@ defmodule Supervisor.Test do
       {:ok, supervisor_pid} = Supervisor.start_link(children, strategy: :one_for_one)
 
       assert Supervisor.count_children(supervisor_pid) == %{
-        active: 1,
-        specs: 1,
-        supervisors: 1,
-        workers: 0
-      }
+               active: 1,
+               specs: 1,
+               supervisors: 1,
+               workers: 0
+             }
 
       assert [{ExampleWorker, _, :supervisor, _}] = Supervisor.which_children(supervisor_pid)
 
@@ -24,17 +24,17 @@ defmodule Supervisor.Test do
     test "can customize the name and run multiple registries for the same module" do
       children = [
         GenRegistry.Spec.child_spec(ExampleWorker, name: ExampleWorker.A),
-        GenRegistry.Spec.child_spec(ExampleWorker, name: ExampleWorker.B),
+        GenRegistry.Spec.child_spec(ExampleWorker, name: ExampleWorker.B)
       ]
 
       {:ok, supervisor_pid} = Supervisor.start_link(children, strategy: :one_for_one)
 
       assert Supervisor.count_children(supervisor_pid) == %{
-        active: 2,
-        specs: 2,
-        supervisors: 2,
-        workers: 0
-      }
+               active: 2,
+               specs: 2,
+               supervisors: 2,
+               workers: 0
+             }
 
       children = Supervisor.which_children(supervisor_pid)
 
@@ -74,11 +74,11 @@ defmodule Supervisor.Test do
       {:ok, supervisor_pid} = Supervisor.start_link(children, strategy: :one_for_one)
 
       assert Supervisor.count_children(supervisor_pid) == %{
-        active: 1,
-        specs: 1,
-        supervisors: 1,
-        workers: 0
-      }
+               active: 1,
+               specs: 1,
+               supervisors: 1,
+               workers: 0
+             }
 
       assert [{ExampleWorker, _, :supervisor, _}] = Supervisor.which_children(supervisor_pid)
 
@@ -88,17 +88,17 @@ defmodule Supervisor.Test do
     test "can customize the name and run multiple registries for the same module" do
       children = [
         {GenRegistry, worker_module: ExampleWorker, name: ExampleWorker.A},
-        {GenRegistry, worker_module: ExampleWorker, name: ExampleWorker.B},
+        {GenRegistry, worker_module: ExampleWorker, name: ExampleWorker.B}
       ]
 
       {:ok, supervisor_pid} = Supervisor.start_link(children, strategy: :one_for_one)
 
       assert Supervisor.count_children(supervisor_pid) == %{
-        active: 2,
-        specs: 2,
-        supervisors: 2,
-        workers: 0
-      }
+               active: 2,
+               specs: 2,
+               supervisors: 2,
+               workers: 0
+             }
 
       children = Supervisor.which_children(supervisor_pid)
 

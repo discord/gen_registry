@@ -14,7 +14,7 @@ Add `GenRegistry` to your dependencies.
 ```elixir
 def deps do
   [
-    {:gen_registry, "~> 1.2.0"}
+    {:gen_registry, "~> 1.3.0"}
   ]
 end
 ```
@@ -23,18 +23,18 @@ end
 
 `GenRegistry` makes it easy to manage one process per id, this allows the application code to work with a more natural id (user_id, session_id, phone_number, etc), but still easily retrieve and lazily spawn processes.
 
-### Example: Phone Number Blacklist
+### Example: Phone Number Denylist
 
-In our example we have some arbitrary spam deflection system where each phone number is allowed to define its own custom rules.  To make sure our application stays simple we encapsulate the blacklisting logic in a GenServer which handles caching, loading, saving blacklist rules.
+In our example we have some arbitrary spam deflection system where each phone number is allowed to define its own custom rules.  To make sure our application stays simple we encapsulate the denylisting logic in a GenServer which handles caching, loading, and saving denylist rules.
 
-With `GenRegistry` we don't need to worry about carefully keeping track of Blacklist pids for each phone number.  The phone number (normalized) makes a natural id for the `GenRegistry`. `GenRegistry` will also manage the lifecycle and supervision of these processes, allowing us to write simplified code like this.
+With `GenRegistry` we don't need to worry about carefully keeping track of Denylist pids for each phone number.  The phone number (normalized) makes a natural id for the `GenRegistry`. `GenRegistry` will also manage the lifecycle and supervision of these processes, allowing us to write simplified code like this.
 
 ```elixir
 def place_call(sender, recipient) do
-  # Get the recipients Blacklist GenServer
-  {:ok, blacklist} = GenRegistry.lookup_or_start(Blacklist, recipient, [recipient])
+  # Get the recipients Denylist GenServer
+  {:ok, denylist} = GenRegistry.lookup_or_start(Denylist, recipient, [recipient])
 
-  if Blacklist.allow?(blacklist, sender) do
+  if Denylist.allow?(denylist, sender) do
     {:ok, :place_call}
   else
     {:error, :reject_call}
@@ -42,7 +42,7 @@ def place_call(sender, recipient) do
 end
 ```
 
-Does the recipient have a GenServer already running? If so then the pid will be returned, if not then `Blacklist.start_link(recipient)` will be called, the resulting pid will be registered with the `GenRegistry` under the recipient phone number and the pid returned.
+Does the recipient have a GenServer already running? If so then the pid will be returned, if not then `Denylist.start_link(recipient)` will be called, the resulting pid will be registered with the `GenRegistry` under the recipient phone number and the pid returned.
 
 ## Supervising the GenRegistry
 
@@ -120,7 +120,7 @@ end
 ```
 
 Now simply use the `name` in place of the `worker_module` when calling any of the functions outlined below.
-### Starting a new process
+### Starting or retrieving a process
 
 `GenRegistry` makes it easy to idempotently start worker processes using the `GenRegistry.lookup_or_start/4` function.
 
@@ -131,6 +131,16 @@ Now simply use the `name` in place of the `worker_module` when calling any of th
 If `:example_id` is already bound to a running process, then that process's pid is returned. Otherwise a new process is started.  Workers are started by calling the `worker_module`'s `start_link` function, `GenRegistry.lookup_or_start/4` accepts an optional third argument, a list of arguments to pass to `start_link`, the default is to pass no arguments.
 
 If there is an error spawning a new process, `{:error, reason}` is returned.
+
+### Starting a new process
+
+Sometimes a process will want to know about an associated pid but only if it is the starting process.  The `GenRegistry.start/4` function is similar to `GenRegistry.lookup_or_start/4` but it will return an `{:error, {:already_started, pid}}` if the id is already associated with a running process.
+
+This can be useful when the starting process acts like an owner and a single-owner rule is desired.
+
+If there is not process associated with the provided id then one will be started by calling the `worker_module`'s `start_link` function.  Just like `GenRegistry.lookup_or_start/4`, `GenRegistry.start/4` accepts an optional third arguments, a list of arguments to pass to `start_link`, the default is to pass no arguments.
+
+If there is an error spawning a new process `{:error, reason}` is returned.
 
 ### Retrieving the pid for an id
 

@@ -62,13 +62,12 @@ defmodule Spy do
   end
 
   def init(original) do
-    state =
-      %{
-        original: original,
-        calls: [],
-        casts: [],
-        messages: []
-      }
+    state = %{
+      original: original,
+      calls: [],
+      casts: [],
+      messages: []
+    }
 
     {:ok, state}
   end

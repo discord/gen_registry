@@ -79,7 +79,12 @@ defmodule GenRegistry do
   If the id is not associated with a running process then it is spawned, the optional third
   argument will be passed to `start_link` of the `worker_module` to spawn a new process.
   """
-  @spec lookup_or_start(registry :: GenServer.server(), id :: Types.id(), args :: [any], timeout :: integer) ::
+  @spec lookup_or_start(
+          registry :: GenServer.server(),
+          id :: Types.id(),
+          args :: [any],
+          timeout :: integer
+        ) ::
           {:ok, pid} | {:error, any}
   def lookup_or_start(registry, id, args \\ [], timeout \\ 5_000)
 
@@ -95,6 +100,37 @@ defmodule GenRegistry do
 
   def lookup_or_start(registry, id, args, timeout) do
     @gen_module.call(registry, {:lookup_or_start, id, args}, timeout)
+  end
+
+  @doc """
+  Starts a process by id
+
+  If the id is already associated with a running process `{:error, {:already_started, pid}}` is
+  returned.
+
+  If the id is not associated with a running process then it is spawned, the optional third
+  argument will be passed to `start_link` of the `worker_module` to spawn a new process.
+  """
+  @spec start(
+          registry :: GenServer.server(),
+          id :: Types.id(),
+          args :: [any()],
+          timeout :: integer()
+        ) :: {:ok, pid()} | {:error, {:already_started, pid()}} | {:error, any()}
+  def start(registry, id, args \\ [], timeout \\ 5_000)
+
+  def start(registry, id, args, timeout) when is_atom(registry) do
+    case lookup(registry, id) do
+      {:ok, pid} ->
+        {:error, {:already_started, pid}}
+
+      {:error, :not_found} ->
+        @gen_module.call(registry, {:start, id, args}, timeout)
+    end
+  end
+
+  def start(registry, id, args, timeout) do
+    @gen_module.call(registry, {:start, id, args}, timeout)
   end
 
   @doc """
@@ -201,6 +237,10 @@ defmodule GenRegistry do
     {:reply, do_lookup_or_start(state, id, args), state}
   end
 
+  def handle_call({:start, id, args}, _from, state) do
+    {:reply, do_start(state, id, args), state}
+  end
+
   def handle_call({:stop, id}, _from, state) do
     {:reply, do_stop(state, id), state}
   end
@@ -261,6 +301,26 @@ defmodule GenRegistry do
     case lookup(workers, id) do
       {:ok, pid} ->
         {:ok, pid}
+
+      {:error, :not_found} ->
+        case apply(worker_module, :start_link, args) do
+          {:ok, pid} ->
+            ETS.insert_new(workers, {id, pid})
+            Process.put(pid, id)
+            {:ok, pid}
+
+          {:error, reason} ->
+            {:error, reason}
+        end
+    end
+  end
+
+  @spec do_start(state :: t(), id :: Types.id(), args :: [any()]) ::
+          {:ok, pid()} | {:error, {:already_started, pid()}} | {:error, any()}
+  defp do_start(%__MODULE__{worker_module: worker_module, workers: workers}, id, args) do
+    case lookup(workers, id) do
+      {:ok, pid} ->
+        {:error, {:already_started, pid}}
 
       {:error, :not_found} ->
         case apply(worker_module, :start_link, args) do
